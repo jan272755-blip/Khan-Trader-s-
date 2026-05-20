@@ -1,0 +1,6 @@
+{
+  "name": "Khan Trader’s",
+  "description": "A modern mobile-friendly investment and trading platform with a clean white, green, and gold design.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
