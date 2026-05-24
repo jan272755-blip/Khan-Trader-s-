@@ -41,16 +41,11 @@ interface DashboardScreenProps {
 }
 
 const PLANS: InvestmentPlan[] = [
-  { id: '1', name: 'Khan Plan 1', price: 600, dailyProfit: 60, duration: 30, level: 'Basic' },
-  { id: '2', name: 'Khan Plan 2', price: 1000, dailyProfit: 150, duration: 30, level: 'Basic' },
-  { id: '3', name: 'Khan Plan 3', price: 2000, dailyProfit: 400, duration: 30, level: 'Silver' },
-  { id: '4', name: 'Khan Plan 4', price: 3000, dailyProfit: 600, duration: 30, level: 'Silver' },
-  { id: '5', name: 'Khan Plan 5', price: 4000, dailyProfit: 800, duration: 30, level: 'Gold' },
-  { id: '6', name: 'Khan Plan 6', price: 5000, dailyProfit: 1250, duration: 30, level: 'Gold' },
-  { id: '7', name: 'Khan Plan 7', price: 6000, dailyProfit: 1500, duration: 30, level: 'Gold' },
-  { id: '8', name: 'Khan Plan 8', price: 8000, dailyProfit: 2000, duration: 30, level: 'VIP' },
-  { id: '9', name: 'Khan Plan 9', price: 10000, dailyProfit: 2500, duration: 30, level: 'VIP' },
-  { id: '10', name: 'Khan Plan 10', price: 15000, dailyProfit: 5000, duration: 30, level: 'VIP' },
+  { id: '1', name: 'PLAN-01', price: 2000, dailyProfit: 1500, duration: 9999, level: 'Basic' },
+  { id: '2', name: 'PLAN-02', price: 3000, dailyProfit: 2000, duration: 9999, level: 'Silver' },
+  { id: '3', name: 'PLAN-03', price: 4000, dailyProfit: 3000, duration: 9999, level: 'Silver' },
+  { id: '4', name: 'PLAN-04', price: 5000, dailyProfit: 4000, duration: 9999, level: 'Gold' },
+  { id: '5', name: 'PLAN-05', price: 10000, dailyProfit: 8000, duration: 9999, level: 'VIP' },
 ];
 
 const translations = {
@@ -91,7 +86,7 @@ const translations = {
     security: 'Security',
     logout: 'Logout Account',
     makeADeposit: 'Make a Deposit',
-    depositDetails: 'Transfer Rs. 600 - Rs. 15,000 to the account details below and submit copy of screenshot.',
+    depositDetails: 'Transfer Rs. 2,000 - Rs. 10,000 to the account details below and submit copy of screenshot.',
     accountNumber: 'Account Number',
     accountName: 'Account Name',
     amountPkr: 'Amount (PKR)',
@@ -129,8 +124,8 @@ const translations = {
     urdu: 'اردو (Urdu)',
     verified: 'Verified',
     unverified: 'Unverified',
-    minDepositLimit: 'Deposit amount must be between Rs. 600 and Rs. 15,000.',
-    minWithdrawLimit: 'Withdrawal amount must be between Rs. 60 and Rs. 600,000.',
+    minDepositLimit: 'Deposit amount must be between Rs. 2,000 and Rs. 10,000.',
+    minWithdrawLimit: 'Withdrawal amount must be between Rs. 1,500 and Rs. 800,000.',
     insufficientBalance: 'Insufficient balance.',
     requestSuccess: 'Request submitted successfully!',
     welcomeBack: 'Welcome Back',
@@ -140,8 +135,8 @@ const translations = {
     dailyProfit: 'Daily Profit',
     level: 'Level',
     investment: 'Investment',
-    depositReceiptMinMax: 'Min: 600 - Max: 15,000',
-    withdrawReceiptMinMax: 'Min: 60 - Max: 600,000',
+    depositReceiptMinMax: 'Min: 2,000 - Max: 10,000',
+    withdrawReceiptMinMax: 'Min: 1,500 - Max: 800,000',
     pasteTid: 'Paste Transaction ID',
     enterAmount: 'Enter amount',
     successNotification: 'Added Rs. {amount} daily profit from your active investments!',
@@ -200,7 +195,7 @@ const translations = {
     security: 'سیکیورٹی',
     logout: 'لاگ آؤٹ اکاؤنٹ',
     makeADeposit: 'ڈپازٹ کریں',
-    depositDetails: 'درج ذیل اکاؤنٹ کی تفصیلات پر Rs. 600 سے Rs. 15,000 بھیجیں اور اسکرین شاٹ کی کاپی جمع کرائیں۔',
+    depositDetails: 'درج ذیل اکاؤنٹ کی تفصیلات پر Rs. 2,000 سے Rs. 10,000 بھیجیں اور اسکرین شاٹ کی کاپی جمع کرائیں۔',
     accountNumber: 'اکاؤنٹ نمبر',
     accountName: 'اکاؤنٹ کا نام',
     amountPkr: 'رقم (ہزاروں میں)',
@@ -217,7 +212,7 @@ const translations = {
     accountNumberIban: 'اکاؤنٹ نمبر / IBAN',
     easypaisaJazzcashNum: 'ایزی پیسہ/جاز کیش نمبر',
     enterIbanOrAcc: 'اکاؤنٹ نمبر یا IBAN درج کریں',
-    enterMobileNum: 'موبائل نمبر درج کریں',
+    enterMobileNum: 'مائل نمبر درج کریں',
     accountHolderName: 'اکاؤنٹ ہولڈر کا نام',
     enterAccName: 'اکاؤنٹ ہولڈر کا نام درج کریں',
     withdrawalTimeNote: 'ودڈرال پروسیسنگ ٹائم: 5 منٹ سے 1 گھنٹہ',
@@ -238,8 +233,8 @@ const translations = {
     urdu: 'اردو (Urdu)',
     verified: 'تصدیق شدہ',
     unverified: 'غیر تصدیق شدہ',
-    minDepositLimit: 'ڈپازٹ رقم 600 اور 15,000 روپے کے درمیان ہونی چاہیے۔',
-    minWithdrawLimit: 'ودڈرال رقم 60 اور 600,000 روپے کے درمیان ہونی چاہیے۔',
+    minDepositLimit: 'ڈپازٹ رقم 2,000 اور 10,000 روپے کے درمیان ہونی چاہیے۔',
+    minWithdrawLimit: 'ودڈرال رقم 1,500 اور 800,000 روپے کے درمیان ہونی چاہیے۔',
     insufficientBalance: 'بیلنس ناکافی ہے۔',
     requestSuccess: 'درخواست کامیابی کے ساتھ جمع ہو گئی!',
     welcomeBack: 'خوش آمدید',
@@ -249,8 +244,8 @@ const translations = {
     dailyProfit: 'روزانہ منافع',
     level: 'لیول',
     investment: 'انویسٹمنٹ',
-    depositReceiptMinMax: 'کم از کم: 600 - زیادہ سے زیادہ: 15,000',
-    withdrawReceiptMinMax: 'کم از کم: 60 - زیادہ سے زیادہ: 600,000',
+    depositReceiptMinMax: 'کم از کم: 2,000 - زیادہ سے زیادہ: 10,000',
+    withdrawReceiptMinMax: 'کم از کم: 1,500 - زیادہ سے زیادہ: 800,000',
     pasteTid: 'ٹرانزیکشن ID پیسٹ کریں',
     enterAmount: 'رقم درج کریں',
     successNotification: 'آپ کی فعال انویسٹمنٹس سے Rs. {amount} روزانہ منافع شامل کر دیا گیا ہے!',
@@ -544,8 +539,8 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     }
 
     const amount = parseInt(depositForm.amount);
-    if (amount < 600 || amount > 15000) {
-      showNotification('Deposit amount must be between Rs. 600 and Rs. 15,000.', 'error');
+    if (amount < 2000 || amount > 10000) {
+      showNotification(t('minDepositLimit'), 'error');
       return;
     }
 
@@ -584,8 +579,8 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     e.preventDefault();
     const amount = parseInt(withdrawForm.amount);
     
-    if (!amount || amount < 60 || amount > 600000) {
-      showNotification('Withdrawal amount must be between Rs. 60 and Rs. 600,000.', 'error');
+    if (!amount || amount < 1500 || amount > 800000) {
+      showNotification(t('minWithdrawLimit'), 'error');
       return;
     }
 
@@ -1688,8 +1683,8 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
                       <input 
                         required
                         type="number"
-                        min="600"
-                        max="15000"
+                        min="2000"
+                        max="10000"
                         placeholder={t('enterAmount')}
                         value={depositForm.amount}
                         onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})}
@@ -1865,8 +1860,8 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
                   <input 
                     required
                     type="number"
-                    min="60"
-                    max="600000"
+                    min="1500"
+                    max="800000"
                     placeholder={t('enterAmount')}
                     value={withdrawForm.amount}
                     onChange={(e) => setWithdrawForm({...withdrawForm, amount: e.target.value})}
@@ -2469,7 +2464,9 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
                       </div>
 
                       <h3 className="text-xl font-bold text-white font-display mb-1">{plan.name}</h3>
-                      <p className="text-slate-500 text-xs mb-6">{t('durationDays', { days: plan.duration })}</p>
+                      <p className="text-slate-500 text-xs mb-6">
+                        {plan.duration >= 9999 ? (language === 'ur' ? 'مدت: تاحیات' : 'Duration: Lifetime') : t('durationDays', { days: plan.duration })}
+                      </p>
 
                       <div className="flex items-end justify-between">
                          <div>
