@@ -276,6 +276,18 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     return all.filter(t => t.username?.toLowerCase() === user.username.toLowerCase());
   };
 
+  // Keep stable refs to avoid triggering hooks unnecessarily
+  const refreshUserRef = React.useRef(refreshUser);
+  const showNotificationRef = React.useRef(showNotification);
+
+  useEffect(() => {
+    refreshUserRef.current = refreshUser;
+  }, [refreshUser]);
+
+  useEffect(() => {
+    showNotificationRef.current = showNotification;
+  }, [showNotification]);
+
   const [activeTab, setActiveTab] = useState<'home' | 'plans' | 'team' | 'profile'>('home');
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const all = storage.getTransactions();
@@ -313,7 +325,7 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     updateLastSeen(); // initial
     const heartbeat = setInterval(updateLastSeen, 10000); // 10 seconds
     return () => clearInterval(heartbeat);
-  }, [user]);
+  }, [user?.username]);
 
   // Keep admin statistics refreshed
   useEffect(() => {
@@ -322,7 +334,7 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
       setAdminRefreshKey(prev => prev + 1);
     }, 5000); // auto refresh statistics every 5 seconds
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user?.isAdmin, user?.username]);
 
   // Reset deposit confirmation when deposit modal is closed
   useEffect(() => {
@@ -452,10 +464,10 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
       newEarningTxs.forEach(tx => storage.addTransaction(tx));
       storage.updateBalance(totalEarningCredit);
       setTransactions(getMyTransactions());
-      refreshUser();
-      showNotification(`Added Rs. ${totalEarningCredit.toLocaleString()} daily profit from your active investments!`, 'success');
+      refreshUserRef.current();
+      showNotificationRef.current(`Added Rs. ${totalEarningCredit.toLocaleString()} daily profit from your active investments!`, 'success');
     }
-  }, [transactions, refreshUser]);
+  }, [transactions.length, user?.username, user?.phone]);
 
   // Compute countdown to the nearest next profit payout
   const nextProfitInfo = useMemo(() => {
