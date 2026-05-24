@@ -44,6 +44,13 @@ export default function App() {
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
 
   useEffect(() => {
+    // Parse referral code if present in URL query
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('user');
+    if (ref) {
+      localStorage.setItem('khan_traders_referred_by', ref.trim());
+    }
+
     // Simulate loading
     const timer = setTimeout(() => {
       const savedUser = storage.getUser();

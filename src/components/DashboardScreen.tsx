@@ -212,7 +212,7 @@ const translations = {
     accountNumberIban: 'اکاؤنٹ نمبر / IBAN',
     easypaisaJazzcashNum: 'ایزی پیسہ/جاز کیش نمبر',
     enterIbanOrAcc: 'اکاؤنٹ نمبر یا IBAN درج کریں',
-    enterMobileNum: 'مائل نمبر درج کریں',
+    enterMobileNum: 'موبائل نمبر درج کریں',
     accountHolderName: 'اکاؤنٹ ہولڈر کا نام',
     enterAccName: 'اکاؤنٹ ہولڈر کا نام درج کریں',
     withdrawalTimeNote: 'ودڈرال پروسیسنگ ٹائم: 5 منٹ سے 1 گھنٹہ',
@@ -526,6 +526,40 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     storage.updateBalance(-plan.price);
     storage.addTransaction(tx);
     storage.addLog('plan_investment', user.username, `Invested Rs. ${plan.price.toLocaleString()} in ${plan.name}`);
+
+    // Credit 10% commission to referrer if user is referred by someone
+    if (user.referredBy) {
+      const db = storage.getUsersDB();
+      const referrerIndex = db.findIndex(u => u.username.toLowerCase() === user.referredBy?.toLowerCase());
+      if (referrerIndex !== -1) {
+        const commissionAmount = Math.floor(plan.price * 0.10); // 10% referral reward
+
+        // 1. Update referrer's balance in user model DB
+        db[referrerIndex].balance += commissionAmount;
+        localStorage.setItem('khan_traders_db', JSON.stringify(db));
+
+        // 2. Add Transaction object for referrer
+        const commissionTx: Transaction = {
+          id: `ref-com-${Math.random().toString(36).substr(2, 9)}`,
+          type: 'earning',
+          amount: commissionAmount,
+          date: new Date().toISOString(),
+          status: 'success',
+          username: db[referrerIndex].username,
+          phone: db[referrerIndex].phone,
+          details: `10% commission from ${user.username}'s purchase in ${plan.name}`
+        };
+        storage.addTransaction(commissionTx);
+
+        // 3. If the active user has the same username as the referrer, synchronize active user session model!
+        const activeUser = storage.getUser();
+        if (activeUser && activeUser.username.toLowerCase() === user.referredBy.toLowerCase()) {
+          activeUser.balance += commissionAmount;
+          storage.setUser(activeUser);
+        }
+      }
+    }
+
     setTransactions(getMyTransactions());
     refreshUser();
     showNotification(`Successfully invested in ${plan.name}!`);
@@ -1483,7 +1517,7 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
   }
 
   return (
-    <div className="pb-24 pt-4 px-4 max-w-lg mx-auto" dir={language === 'ur' ? 'rtl' : 'ltr'}>
+    <div className="pb-36 pt-4 px-4 max-w-lg mx-auto" dir={language === 'ur' ? 'rtl' : 'ltr'}>
       {/* Deposit Modal */}
       <AnimatePresence>
         {showDepositModal && (

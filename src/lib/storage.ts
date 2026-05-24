@@ -18,10 +18,21 @@ export const storage = {
   },
   registerUser: (user: User): boolean => {
     const db = storage.getUsersDB();
-    if (db.some(u => u.username === user.username)) {
+    if (db.some(u => u.username.toLowerCase() === user.username.toLowerCase())) {
       return false; // Already exists
     }
+    
+    // If user is referred, increment referrer's referrals count in user database
+    if (user.referredBy) {
+      const referrerIndex = db.findIndex(u => u.username.toLowerCase() === user.referredBy?.toLowerCase());
+      if (referrerIndex !== -1) {
+        db[referrerIndex].referrals = (db[referrerIndex].referrals || 0) + 1;
+      }
+    }
+    
     localStorage.setItem(USERS_DB_KEY, JSON.stringify([...db, user]));
+    // Clear the stored temporary referral param
+    localStorage.removeItem('khan_traders_referred_by');
     return true;
   },
   findUser: (username: string): User | undefined => {

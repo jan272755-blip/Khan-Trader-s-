@@ -8,6 +8,7 @@ export interface User {
   joinDate: string;
   lastSeen?: string;
   isAdmin?: boolean;
+  referredBy?: string;
 }
 
 export interface InvestmentPlan {

@@ -65,6 +65,7 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
     }
 
     if (mode === 'register') {
+      const referredBy = localStorage.getItem('khan_traders_referred_by') || undefined;
       const newUser: User = {
         username: trimmedUsername,
         phone: trimmedPhone,
@@ -72,6 +73,7 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
         balance: 0, 
         referrals: 0,
         joinDate: new Date().toISOString(),
+        referredBy: referredBy,
       };
       
       const success = storage.registerUser(newUser);
