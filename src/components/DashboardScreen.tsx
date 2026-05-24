@@ -507,21 +507,18 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
       const startMs = new Date(inv.date).getTime();
       const elapsedMs = Date.now() - startMs;
       const intervalMs = 24 * 60 * 60 * 1000; // 24 hours
-      const rawElapsedCycles = Math.floor(elapsedMs / intervalMs);
-      const completedCycles = Math.min(rawElapsedCycles, plan.duration);
-
-      if (completedCycles <= 0) return;
+      const expectedTotalProfits = Math.min(1 + Math.floor(elapsedMs / intervalMs), plan.duration);
 
       // Count existing earnings already claimed for this specific investment
       const claimedCount = transactions.filter(
         tx => tx.type === 'earning' && tx.investmentId === inv.id
       ).length;
 
-      const missingPayments = completedCycles - claimedCount;
+      const missingPayments = expectedTotalProfits - claimedCount;
       if (missingPayments > 0) {
         for (let i = 1; i <= missingPayments; i++) {
           const cycleIndex = claimedCount + i;
-          const payoutTime = new Date(startMs + cycleIndex * intervalMs).toISOString();
+          const payoutTime = new Date(startMs + (cycleIndex - 1) * intervalMs).toISOString();
           const earningTx: Transaction = {
             id: `earn-${inv.id}-${cycleIndex}-${Math.random().toString(36).substr(2, 4)}`,
             type: 'earning',
@@ -569,6 +566,21 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     storage.addTransaction(tx);
     storage.addLog('plan_investment', user.username, `Invested Rs. ${plan.price.toLocaleString()} in ${plan.name}`);
 
+    // Credit first daily profit immediately
+    const firstEarnTx: Transaction = {
+      id: `earn-${tx.id}-1-${Math.random().toString(36).substr(2, 4)}`,
+      type: 'earning',
+      amount: plan.dailyProfit,
+      date: tx.date,
+      status: 'success',
+      investmentId: tx.id,
+      username: user.username,
+      phone: user.phone,
+      details: language === 'ur' ? `پہلا فوری منافع (${plan.name})` : `First immediate profit (${plan.name})`
+    };
+    storage.addTransaction(firstEarnTx);
+    storage.updateBalance(plan.dailyProfit);
+
     // Credit 10% commission to referrer if user is referred by someone
     if (user.referredBy) {
       const db = storage.getUsersDB();
@@ -604,7 +616,7 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
 
     setTransactions(getMyTransactions());
     refreshUser();
-    showNotification(`Successfully invested in ${plan.name}!`);
+    showNotification(language === 'ur' ? `کامیابی سے ${plan.name} میں سرمایہ کاری کی گئی! اور Rs. ${plan.dailyProfit.toLocaleString()} کا پہلا فوری منافع حاصل ہو گیا ہے۔` : `Successfully invested in ${plan.name}! Received Rs. ${plan.dailyProfit.toLocaleString()} immediate first profit.`, 'success');
   };
 
   const handleDepositSubmit = (e: React.FormEvent) => {
