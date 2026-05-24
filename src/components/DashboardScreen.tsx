@@ -269,6 +269,95 @@ const translations = {
   }
 };
 
+interface CountdownWidgetProps {
+  transactions: Transaction[];
+  language: 'en' | 'ur';
+}
+
+const CountdownWidget = React.memo(({ transactions, language }: CountdownWidgetProps) => {
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const nextProfitInfo = useMemo(() => {
+    const investments = transactions.filter(tx => tx.type === 'investment');
+    if (investments.length === 0) {
+      return { text: language === 'ur' ? 'کوئی فعال پلان نہیں ہے' : 'No active plans', secondsLeft: -1 };
+    }
+
+    const activePayouts = investments.map(inv => {
+      const plan = PLANS.find(p => p.price === Math.abs(inv.amount));
+      if (!plan) return null;
+
+      const startMs = new Date(inv.date).getTime();
+      const elapsedMs = currentTime - startMs;
+      const intervalMs = 24 * 60 * 60 * 1000;
+      const rawElapsedCycles = Math.floor(elapsedMs / intervalMs);
+      const completedCycles = Math.min(rawElapsedCycles, plan.duration);
+
+      if (completedCycles >= plan.duration) return null;
+
+      const nextPayoutMs = startMs + (completedCycles + 1) * intervalMs;
+      const remainingMs = nextPayoutMs - currentTime;
+
+      return {
+        planName: plan.name,
+        remainingMs,
+        dailyProfit: plan.dailyProfit
+      };
+    }).filter(p => p !== null && p.remainingMs > 0);
+
+    if (activePayouts.length === 0) {
+      return { text: language === 'ur' ? 'پلانز مکمل ہو چکے ہیں' : 'Plans fully completed', secondsLeft: -1 };
+    }
+
+    activePayouts.sort((a, b) => a!.remainingMs - b!.remainingMs);
+    const nearest = activePayouts[0]!;
+
+    const totalSeconds = Math.max(0, Math.floor(nearest.remainingMs / 1000));
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+
+    const formattedTime = `${h.toString().padStart(2, '0')}h : ${m.toString().padStart(2, '0')}m : ${s.toString().padStart(2, '0')}s`;
+    return {
+      text: formattedTime,
+      secondsLeft: totalSeconds,
+      planName: nearest.planName,
+      profit: nearest.dailyProfit
+    };
+  }, [transactions, currentTime, language]);
+
+  return (
+    <div className="bg-gradient-to-br from-[#121212] to-[#1e1a0b] p-4 rounded-2xl border border-yellow-500/20 shadow-sm relative overflow-hidden">
+      <div className="absolute top-2 right-2 text-yellow-500/10">
+        <Clock size={40} />
+      </div>
+      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wide mb-1">
+        {language === 'ur' ? 'اگلے منافع کا کاؤنٹ ڈاؤن' : 'Next Profit Countdown'}
+      </p>
+      <h5 className="font-mono text-lg font-bold text-yellow-500 leading-none mb-1">
+        {nextProfitInfo.text}
+      </h5>
+      {nextProfitInfo.secondsLeft > 0 && (
+        <p className="text-[9px] text-slate-400 leading-none font-sans">
+          {language === 'ur' ? `اگلا پے آؤٹ: +Rs. ${nextProfitInfo.profit} (${nextProfitInfo.planName})` : `Next Payout: +Rs. ${nextProfitInfo.profit} (${nextProfitInfo.planName})`}
+        </p>
+      )}
+      <p className="text-[8px] text-yellow-500/70 font-sans tracking-wide mt-2 pt-2 border-t border-white/5">
+        {language === 'ur' ? '* منافع کی واپسی خریداری کے 24 گھنٹے بعد روزانہ کی بنیاد پر کی جاتی ہے۔' : '* Profit is calculated daily 24 hours after purchase.'}
+      </p>
+    </div>
+  );
+});
+
+CountdownWidget.displayName = 'CountdownWidget';
+
 export default function DashboardScreen({ user, onLogout, showNotification, refreshUser }: DashboardScreenProps) {
   const getMyTransactions = () => {
     const all = storage.getTransactions();
@@ -389,7 +478,6 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
   const [depositForm, setDepositForm] = useState({ amount: '', tid: '' });
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', accountType: 'Easypaisa', accountNumber: '', accountName: '', bankName: '' });
   const [depositProof, setDepositProof] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const t = (key: keyof typeof translations.en, replace?: {[k: string]: string | number}) => {
     const str = translations[language]?.[key] || translations['en']?.[key] || '';
@@ -402,14 +490,6 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     }
     return str;
   };
-
-  // Keep countdown ticking
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Auto-credit daily profits
   useEffect(() => {
@@ -468,56 +548,6 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
       showNotificationRef.current(`Added Rs. ${totalEarningCredit.toLocaleString()} daily profit from your active investments!`, 'success');
     }
   }, [transactions.length, user?.username, user?.phone]);
-
-  // Compute countdown to the nearest next profit payout
-  const nextProfitInfo = useMemo(() => {
-    const investments = transactions.filter(tx => tx.type === 'investment');
-    if (investments.length === 0) {
-      return { text: 'No active plans', secondsLeft: -1 };
-    }
-
-    const activePayouts = investments.map(inv => {
-      const plan = PLANS.find(p => p.price === Math.abs(inv.amount));
-      if (!plan) return null;
-
-      const startMs = new Date(inv.date).getTime();
-      const elapsedMs = currentTime - startMs;
-      const intervalMs = 24 * 60 * 60 * 1000;
-      const rawElapsedCycles = Math.floor(elapsedMs / intervalMs);
-      const completedCycles = Math.min(rawElapsedCycles, plan.duration);
-
-      if (completedCycles >= plan.duration) return null;
-
-      const nextPayoutMs = startMs + (completedCycles + 1) * intervalMs;
-      const remainingMs = nextPayoutMs - currentTime;
-
-      return {
-        planName: plan.name,
-        remainingMs,
-        dailyProfit: plan.dailyProfit
-      };
-    }).filter(p => p !== null && p.remainingMs > 0);
-
-    if (activePayouts.length === 0) {
-      return { text: 'Plans fully completed', secondsLeft: -1 };
-    }
-
-    activePayouts.sort((a, b) => a!.remainingMs - b!.remainingMs);
-    const nearest = activePayouts[0]!;
-
-    const totalSeconds = Math.max(0, Math.floor(nearest.remainingMs / 1000));
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-
-    const formattedTime = `${h.toString().padStart(2, '0')}h : ${m.toString().padStart(2, '0')}m : ${s.toString().padStart(2, '0')}s`;
-    return {
-      text: formattedTime,
-      secondsLeft: totalSeconds,
-      planName: nearest.planName,
-      profit: nearest.dailyProfit
-    };
-  }, [transactions, currentTime]);
 
   const handleInvest = (plan: InvestmentPlan) => {
     if (user.balance < plan.price) {
@@ -2035,23 +2065,7 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-[#121212] to-[#1e1a0b] p-4 rounded-2xl border border-yellow-500/20 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-2 right-2 text-yellow-500/10">
-                    <Clock size={40} />
-                  </div>
-                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wide mb-1">Next Profit Countdown</p>
-                  <h5 className="font-mono text-lg font-bold text-yellow-500 leading-none mb-1">
-                    {nextProfitInfo.text}
-                  </h5>
-                  {nextProfitInfo.secondsLeft > 0 && (
-                    <p className="text-[9px] text-slate-400 leading-none font-sans">
-                      Next Payout: +Rs. {nextProfitInfo.profit} ({nextProfitInfo.planName})
-                    </p>
-                  )}
-                  <p className="text-[8px] text-yellow-500/70 font-sans tracking-wide mt-2 pt-2 border-t border-white/5">
-                    * Profit is calculated daily 24 hours after purchase.
-                  </p>
-                </div>
+                <CountdownWidget transactions={transactions} language={language} />
 
                 <div className="space-y-1">
                   <span className="text-slate-500 text-[9px] font-bold uppercase tracking-widest pl-2 mb-2 block">Core Services</span>
@@ -2357,7 +2371,7 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
         </div>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {activeTab === 'home' && (
           <motion.div
             key="home"
