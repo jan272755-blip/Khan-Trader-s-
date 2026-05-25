@@ -91,11 +91,28 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
         setError('Username already exists. Please choose another.');
       }
     } else {
-      const existingUser = storage.findUser(trimmedUsername);
-      if (existingUser && existingUser.password === trimmedPassword) {
-        onLogin(existingUser);
+      // Direct server-side authentication attempt
+      const result = await storage.loginUserServer(trimmedUsername, trimmedPassword);
+      if (result.success && result.user) {
+        // Authenticated successfully against the server
+        // Ensure user is matching inside local registers too
+        const db = storage.getUsersDB();
+        if (!db.some(u => u.username.toLowerCase() === result.user!.username.toLowerCase())) {
+          localStorage.setItem('khan_traders_db', JSON.stringify([...db, result.user]));
+        }
+        
+        // Sync everything in background
+        storage.syncWithServer().catch(() => {});
+        
+        onLogin(result.user);
       } else {
-        setError('Invalid username or password. Please register first.');
+        // Fallback to local storage (unlikely, but helpful offline)
+        const existingUser = storage.findUser(trimmedUsername);
+        if (existingUser && existingUser.password === trimmedPassword) {
+          onLogin(existingUser);
+        } else {
+          setError(result.error || 'Invalid username or password. Please register first.');
+        }
       }
     }
   };

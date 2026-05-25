@@ -191,6 +191,26 @@ export const storage = {
     }
   },
 
+  // Verify user login credentials with the backend server
+  loginUserServer: async (username: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> => {
+    try {
+      const res = await fetch('/api/login', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return { success: true, user: data.user };
+      } else {
+        return { success: false, error: data.error || "Failed to log in" };
+      }
+    } catch (err) {
+      console.error("Failed to login on server:", err);
+      return { success: false, error: "Network error or server is offline" };
+    }
+  },
+
   // Background sync function called during client-polling
   syncWithServer: async (): Promise<boolean> => {
     try {

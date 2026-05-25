@@ -201,6 +201,25 @@ async function startServer() {
     res.json({ success: true, user: newUser });
   });
 
+  // API Route - Login Verification
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, error: "Username and password are required" });
+    }
+
+    const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ success: false, error: "Username not found. Please register first." });
+    }
+
+    if (user.password !== password) {
+      return res.status(401).json({ success: false, error: "Invalid password. Please try again." });
+    }
+
+    res.json({ success: true, user });
+  });
+
   // API Route - Update user status / login touch
   app.post("/api/user-active", (req, res) => {
     const { username, lastSeen } = req.body;
