@@ -1,0 +1,57 @@
+{
+  "users": [
+    {
+      "username": "adminaccount",
+      "phone": "0000000000",
+      "password": "@admin@account@2727",
+      "balance": 0,
+      "referrals": 0,
+      "joinDate": "2026-05-25T13:55:50.264Z",
+      "isAdmin": true,
+      "lastSeen": "2026-05-25T14:30:57.350Z"
+    },
+    {
+      "username": "shabanbhutta786787@gmail.com",
+      "phone": "03001234567",
+      "password": "user123",
+      "balance": 0,
+      "referrals": 0,
+      "joinDate": "2026-05-25T14:30:00.000Z",
+      "lastSeen": "2026-05-25T14:30:57.000Z"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "tx_shaban_dep_1",
+      "type": "deposit",
+      "amount": 5000,
+      "date": "2026-05-25T14:30:15.000Z",
+      "status": "pending",
+      "username": "shabanbhutta786787@gmail.com",
+      "phone": "03001234567",
+      "details": "EASYPAISA | TID: 112233445566",
+      "tid": "112233445566"
+    }
+  ],
+  "logs": [
+    {
+      "id": "285pq7x2g",
+      "username": "adminaccount",
+      "action": "login",
+      "timestamp": "2026-05-25T14:01:35.676Z"
+    },
+    {
+      "id": "9bxkg38z1",
+      "username": "amir",
+      "action": "logout",
+      "timestamp": "2026-05-25T14:00:26.802Z"
+    },
+    {
+      "id": "log_shaban_dep_request",
+      "username": "shabanbhutta786787@gmail.com",
+      "action": "deposit_request",
+      "timestamp": "2026-05-25T14:30:15.000Z",
+      "details": "Requested deposit of Rs. 5,000 (TID: 112233445566)"
+    }
+  ]
+}
