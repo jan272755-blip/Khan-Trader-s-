@@ -26,7 +26,7 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
     confirmNewPassword: '',
   });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
@@ -34,6 +34,13 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
     const trimmedUsername = formData.username.trim();
     const trimmedPhone = formData.phone.trim();
     const trimmedPassword = formData.password.trim();
+
+    // Sync with backend before login/registration to ensure we are up to date
+    try {
+      await storage.syncWithServer();
+    } catch (err) {
+      console.error("Auth sync failed:", err);
+    }
 
     // Reserved Admin Login check
     const isLoginAdmin = trimmedUsername.toLowerCase() === 'adminaccount' && trimmedPassword === '@admin@account@2727';
@@ -55,7 +62,8 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
         localStorage.setItem('khan_traders_db', JSON.stringify(withAdmin));
       }
       
-      onLogin(adminUser);
+      const serverAdmin = storage.findUser('adminaccount');
+      onLogin(serverAdmin || adminUser);
       return;
     }
 
@@ -92,7 +100,7 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
     }
   };
 
-  const handleForgotSubmit = (e: FormEvent) => {
+  const handleForgotSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
@@ -101,6 +109,13 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
     const trimmedPhone = forgotData.phone.trim();
     const trimmedNewPassword = forgotData.newPassword.trim();
     const trimmedConfirmNewPassword = forgotData.confirmNewPassword.trim();
+
+    // Sync with backend before verifying
+    try {
+      await storage.syncWithServer();
+    } catch (err) {
+      console.error("Forgot auth sync failed:", err);
+    }
 
     if (forgotStep === 1) {
       if (!trimmedUsername || !trimmedPhone) {

@@ -396,34 +396,24 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
   const [adminActiveTab, setAdminActiveTab] = useState<'pending' | 'all-users' | 'activity-logs'>('pending');
   const [language, setLanguage] = useState<'en' | 'ur'>(() => (localStorage.getItem('language') as 'en' | 'ur') || 'en');
 
-  // Keep heartbeat active for user's online status
+  // Real-time synchronization loop to share data across devices and browsers
   useEffect(() => {
-    if (!user || user.username === 'adminaccount') return;
+    if (!user) return;
 
-    const updateLastSeen = () => {
-      const db = storage.getUsersDB();
-      const updatedDb = db.map(u => {
-        if (u.username.toLowerCase() === user.username.toLowerCase()) {
-          return { ...u, lastSeen: new Date().toISOString() };
-        }
-        return u;
-      });
-      localStorage.setItem('khan_traders_db', JSON.stringify(updatedDb));
+    const sync = async () => {
+      const refreshed = await storage.syncWithServer();
+      if (refreshed) {
+        setTransactions(getMyTransactions());
+        refreshUser();
+        setAdminRefreshKey(k => k + 1);
+      }
     };
 
-    updateLastSeen(); // initial
-    const heartbeat = setInterval(updateLastSeen, 10000); // 10 seconds
-    return () => clearInterval(heartbeat);
-  }, [user?.username]);
+    sync(); // Sync instantly on mount / login
+    const interval = setInterval(sync, 3000); // Poll every 3 seconds
 
-  // Keep admin statistics refreshed
-  useEffect(() => {
-    if (!user.isAdmin) return;
-    const interval = setInterval(() => {
-      setAdminRefreshKey(prev => prev + 1);
-    }, 5000); // auto refresh statistics every 5 seconds
     return () => clearInterval(interval);
-  }, [user?.isAdmin, user?.username]);
+  }, [user?.username]);
 
   // Reset deposit confirmation when deposit modal is closed
   useEffect(() => {
@@ -592,6 +582,10 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
         db[referrerIndex].balance += commissionAmount;
         localStorage.setItem('khan_traders_db', JSON.stringify(db));
 
+        // Sync referrer's balance increment to server DB
+        storage.updateOtherUserBalanceServer(db[referrerIndex].username, commissionAmount)
+          .catch(err => console.error("Referrer balance sync failed:", err));
+
         // 2. Add Transaction object for referrer
         const commissionTx: Transaction = {
           id: `ref-com-${Math.random().toString(36).substr(2, 9)}`,
@@ -734,6 +728,9 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     localStorage.setItem('khan_trader_transactions', JSON.stringify(allTxs));
     setTransactions(allTxs);
 
+    // Sync approval to server
+    storage.approveTransactionServer(txId).catch(err => console.error("Server approve failed:", err));
+
     // If it's a deposit, we need to add to user's balance
     if (tx.type === 'deposit') {
       const db = storage.getUsersDB();
@@ -770,6 +767,9 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
     tx.status = 'failed';
     localStorage.setItem('khan_trader_transactions', JSON.stringify(allTxs));
     setTransactions(allTxs);
+
+    // Sync rejection to server
+    storage.rejectTransactionServer(txId).catch(err => console.error("Server reject failed:", err));
 
     // If it's a withdraw, refund deducted balance back to user
     if (tx.type === 'withdraw') {

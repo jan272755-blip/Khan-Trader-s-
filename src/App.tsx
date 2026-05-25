@@ -51,18 +51,35 @@ export default function App() {
       localStorage.setItem('khan_traders_referred_by', ref.trim());
     }
 
-    // Simulate loading
-    const timer = setTimeout(() => {
-      const savedUser = storage.getUser();
-      if (savedUser) {
-        setUser(savedUser);
-        setView('dashboard');
-      } else {
-        setView('auth');
+    const initApp = async () => {
+      // Synchronize with backend database immediately on startup
+      try {
+        await storage.syncWithServer();
+      } catch (err) {
+        console.error("Initial app synchronization failed:", err);
       }
-      setShowWelcomePopup(true);
-    }, 2000);
-    return () => clearTimeout(timer);
+
+      // Transition with a short delay for clean user experience
+      setTimeout(() => {
+        const savedUser = storage.getUser();
+        if (savedUser) {
+          const db = storage.getUsersDB();
+          const syncedUser = db.find(u => u.username.toLowerCase() === savedUser.username.toLowerCase());
+          if (syncedUser) {
+            setUser(syncedUser);
+            storage.setUser(syncedUser);
+          } else {
+            setUser(savedUser);
+          }
+          setView('dashboard');
+        } else {
+          setView('auth');
+        }
+        setShowWelcomePopup(true);
+      }, 1000);
+    };
+
+    initApp();
   }, []);
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {

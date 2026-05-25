@@ -33,11 +33,19 @@ export const storage = {
     localStorage.setItem(USERS_DB_KEY, JSON.stringify([...db, user]));
     // Clear the stored temporary referral param
     localStorage.removeItem('khan_traders_referred_by');
+
+    // Sync to backend Server asynchronously
+    fetch('/api/register', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(user)
+    }).catch(err => console.error("Failed to sync register to server:", err));
+
     return true;
   },
   findUser: (username: string): User | undefined => {
     const db = storage.getUsersDB();
-    return db.find(u => u.username === username);
+    return db.find(u => u.username.toLowerCase() === username.toLowerCase());
   },
   logout: () => {
     localStorage.removeItem(USER_KEY);
@@ -49,6 +57,13 @@ export const storage = {
   addTransaction: (tx: Transaction) => {
     const transactions = storage.getTransactions();
     localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify([tx, ...transactions]));
+
+    // Sync to backend Server asynchronously
+    fetch('/api/add-transaction', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(tx)
+    }).catch(err => console.error("Failed to sync transaction to server:", err));
   },
   updateBalance: (amount: number) => {
     const user = storage.getUser();
@@ -58,8 +73,15 @@ export const storage = {
       
       // Also update in DB
       const db = storage.getUsersDB();
-      const updatedDb = db.map(u => u.username === user.username ? user : u);
+      const updatedDb = db.map(u => u.username.toLowerCase() === user.username.toLowerCase() ? user : u);
       localStorage.setItem(USERS_DB_KEY, JSON.stringify(updatedDb));
+
+      // Sync to backend Server asynchronously
+      fetch('/api/update-user-balance', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user.username, amount })
+      }).catch(err => console.error("Failed to sync user balance to server:", err));
     }
   },
   updatePassword: (username: string, newPassword: string): boolean => {
@@ -77,6 +99,14 @@ export const storage = {
       currentUser.password = newPassword;
       storage.setUser(currentUser);
     }
+
+    // Sync to backend Server asynchronously
+    fetch('/api/update-password', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password: newPassword })
+    }).catch(err => console.error("Failed to sync password change to server:", err));
+
     return true;
   },
   getLogs: (): ActivityLog[] => {
@@ -93,5 +123,95 @@ export const storage = {
       details
     };
     localStorage.setItem('khan_trader_activity_logs', JSON.stringify([newLog, ...logs]));
+
+    // Sync to backend Server asynchronously
+    fetch('/api/add-log', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newLog)
+    }).catch(err => console.error("Failed to sync activity log to server:", err));
+  },
+
+  // Approve a pending deposit or withdrawal request
+  approveTransactionServer: async (txId: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/approve-transaction', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ txId })
+      });
+      return res.ok;
+    } catch (err) {
+      console.error("Failed to approve transaction on backend server:", err);
+      return false;
+    }
+  },
+
+  // Reject a pending deposit or withdrawal request
+  rejectTransactionServer: async (txId: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/reject-transaction', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ txId })
+      });
+      return res.ok;
+    } catch (err) {
+      console.error("Failed to reject transaction on backend server:", err);
+      return false;
+    }
+  },
+
+  // Update another user's balance on backend server (for referral commission)
+  updateOtherUserBalanceServer: async (username: string, amount: number): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/update-user-balance', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, amount })
+      });
+      return res.ok;
+    } catch (err) {
+      console.error("Failed to update other user balance on server:", err);
+      return false;
+    }
+  },
+
+  // Background sync function called during client-polling
+  syncWithServer: async (): Promise<boolean> => {
+    try {
+      // Periodic ping to keep user active and track lastSeen in server DB
+      const currentUser = storage.getUser();
+      if (currentUser) {
+        fetch('/api/user-active', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            username: currentUser.username, 
+            lastSeen: new Date().toISOString() 
+          })
+        }).catch(() => {});
+      }
+
+      const res = await fetch('/api/data');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.users) localStorage.setItem(USERS_DB_KEY, JSON.stringify(data.users));
+        if (data.transactions) localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(data.transactions));
+        if (data.logs) localStorage.setItem('khan_trader_activity_logs', JSON.stringify(data.logs));
+        
+        // Match the current active user with freshly synced database instance (balance updates, etc.)
+        if (currentUser) {
+          const freshUser = data.users.find((u: User) => u.username.toLowerCase() === currentUser.username.toLowerCase());
+          if (freshUser) {
+            storage.setUser(freshUser);
+          }
+        }
+        return true;
+      }
+    } catch (err) {
+      console.error("Failed to sync client with database server:", err);
+    }
+    return false;
   }
 };
