@@ -193,7 +193,21 @@ export const storage = {
         }).catch(() => {});
       }
 
-      const res = await fetch('/api/data');
+      // Collect local database inputs to merge with server
+      const localUsers = storage.getUsersDB();
+      const localTransactions = storage.getTransactions();
+      const localLogs = storage.getLogs();
+
+      const res = await fetch('/api/sync', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          users: localUsers,
+          transactions: localTransactions,
+          logs: localLogs
+        })
+      });
+
       if (res.ok) {
         const data = await res.json();
         if (data.users) localStorage.setItem(USERS_DB_KEY, JSON.stringify(data.users));

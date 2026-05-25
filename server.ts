@@ -84,6 +84,97 @@ async function startServer() {
     res.json(db);
   });
 
+  // API Route - Two-way Sync and Merge
+  app.post("/api/sync", (req, res) => {
+    const clientData = req.body;
+    let mutated = false;
+
+    if (clientData) {
+      // 1. Merge Users
+      if (Array.isArray(clientData.users)) {
+        clientData.users.forEach((clientUser: User) => {
+          if (!clientUser || !clientUser.username) return;
+          const serverUserIdx = db.users.findIndex(u => u.username.toLowerCase() === clientUser.username.toLowerCase());
+          if (serverUserIdx === -1) {
+            // User from client local storage doesn't exist on server; add it
+            db.users.push(clientUser);
+            mutated = true;
+          } else {
+            // User exists on server; update client modifications if any (like password/phone if they are empty on server, or latest lastSeen)
+            const serverUser = db.users[serverUserIdx];
+            let userChanged = false;
+            
+            if (!serverUser.password && clientUser.password) {
+              serverUser.password = clientUser.password;
+              userChanged = true;
+            }
+            if (!serverUser.phone && clientUser.phone) {
+              serverUser.phone = clientUser.phone;
+              userChanged = true;
+            }
+            if (clientUser.referredBy && !serverUser.referredBy) {
+              serverUser.referredBy = clientUser.referredBy;
+              userChanged = true;
+            }
+            if (clientUser.lastSeen && (!serverUser.lastSeen || new Date(clientUser.lastSeen).getTime() > new Date(serverUser.lastSeen).getTime())) {
+              serverUser.lastSeen = clientUser.lastSeen;
+              userChanged = true;
+            }
+            
+            if (userChanged) {
+              mutated = true;
+            }
+          }
+        });
+      }
+
+      // 2. Merge Transactions
+      if (Array.isArray(clientData.transactions)) {
+        clientData.transactions.forEach((clientTx: Transaction) => {
+          if (!clientTx || !clientTx.id) return;
+          const serverTxIdx = db.transactions.findIndex(t => t.id === clientTx.id);
+          if (serverTxIdx === -1) {
+            // Client transaction is new; add to server database
+            db.transactions.push(clientTx);
+            mutated = true;
+          } else {
+            // Keep the more resolved status from server, but if client has resolved it, let's keep success/failed
+            const serverTx = db.transactions[serverTxIdx];
+            if (serverTx.status === 'pending' && clientTx.status !== 'pending') {
+              serverTx.status = clientTx.status;
+              mutated = true;
+            }
+          }
+        });
+        
+        // Sort transactions descending by date
+        db.transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      }
+
+      // 3. Merge logs
+      if (Array.isArray(clientData.logs)) {
+        clientData.logs.forEach((clientLog: ActivityLog) => {
+          if (!clientLog || !clientLog.id) return;
+          const serverLogIdx = db.logs.findIndex(l => l.id === clientLog.id);
+          if (serverLogIdx === -1) {
+            // New log; add it
+            db.logs.push(clientLog);
+            mutated = true;
+          }
+        });
+        
+        // Sort logs descending by timestamp
+        db.logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      }
+    }
+
+    if (mutated) {
+      saveDB();
+    }
+
+    res.json(db);
+  });
+
   // API Route - Registration
   app.post("/api/register", (req, res) => {
     const newUser: User = req.body;
