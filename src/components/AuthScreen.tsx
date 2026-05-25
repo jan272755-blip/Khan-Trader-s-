@@ -446,6 +446,35 @@ export default function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
               </button>
             )}
           </div>
+
+          <div className="mt-4 pt-4 border-t border-white/5 text-center flex flex-col items-center select-none">
+            <button
+              type="button"
+              onClick={async () => {
+                localStorage.removeItem('khan_trader_user');
+                localStorage.removeItem('khan_traders_db');
+                localStorage.removeItem('khan_trader_transactions');
+                localStorage.removeItem('khan_trader_activity_logs');
+                setError(null);
+                setSuccessMessage("بروز کیشے صاف کیا جا رہا ہے! (Clearing cache...)");
+                
+                try {
+                  await storage.syncWithServer();
+                  setSuccessMessage("کامیابی سے ری-سنک ہو گیا! نیا ڈیٹا لوڈ ہو رہا ہے... (Cache cleared & re-synced successfully!)");
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1200);
+                } catch (e) {
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1000);
+                }
+              }}
+              className="text-[11px] text-slate-500 hover:text-yellow-500 font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/[0.02] border border-transparent hover:border-white/5 transition-all cursor-pointer font-sans"
+            >
+              🧹 Clear Browser Cache & Resync Data (کیشے صاف کریں)
+            </button>
+          </div>
         </div>
         
         <div className="mt-10 flex flex-col items-center gap-4">

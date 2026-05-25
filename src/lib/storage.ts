@@ -7,14 +7,28 @@ const TRANSACTIONS_KEY = 'khan_trader_transactions';
 export const storage = {
   getUser: (): User | null => {
     const data = localStorage.getItem(USER_KEY);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+    const parsed = JSON.parse(data);
+    if (parsed && parsed.username && parsed.username.toLowerCase() === 'adminaccount') {
+      parsed.isAdmin = true;
+    }
+    return parsed;
   },
   setUser: (user: User) => {
+    if (user && user.username && user.username.toLowerCase() === 'adminaccount') {
+      user.isAdmin = true;
+    }
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   },
   getUsersDB: (): User[] => {
     const data = localStorage.getItem(USERS_DB_KEY);
-    return data ? JSON.parse(data) : [];
+    const list = data ? JSON.parse(data) : [];
+    return list.map((u: User) => {
+      if (u && u.username && u.username.toLowerCase() === 'adminaccount') {
+        u.isAdmin = true;
+      }
+      return u;
+    });
   },
   registerUser: (user: User): boolean => {
     const db = storage.getUsersDB();
