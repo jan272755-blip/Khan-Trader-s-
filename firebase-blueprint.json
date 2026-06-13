@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user account in Khan Traders",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "phone": { "type": "string" },
+        "password": { "type": "string" },
+        "balance": { "type": "number" },
+        "referrals": { "type": "number" },
+        "joinDate": { "type": "string", "format": "date-time" },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "isAdmin": { "type": "boolean" },
+        "referredBy": { "type": "string" }
+      },
+      "required": ["username", "phone", "balance", "referrals", "joinDate"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Represents a deposit, withdrawal, investment, or earning transaction in Khan Traders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "withdraw", "investment", "earning"] },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "success", "failed"] },
+        "investmentId": { "type": "string" },
+        "username": { "type": "string" },
+        "phone": { "type": "string" },
+        "details": { "type": "string" },
+        "tid": { "type": "string" },
+        "receiptImage": { "type": "string" },
+        "accountType": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "accountName": { "type": "string" },
+        "bankName": { "type": "string" }
+      },
+      "required": ["id", "type", "amount", "date", "status"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "System activity or user transaction logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "action": { "type": "string", "enum": ["login", "logout", "deposit_request", "withdraw_request", "plan_investment"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "details": { "type": "string" }
+      },
+      "required": ["id", "username", "action", "timestamp"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Application settings such as auto-approval configurations",
+      "type": "object",
+      "properties": {
+        "autoApprovalEnabled": { "type": "boolean" },
+        "autoApprovalDelayMinutes": { "type": "number" }
+      },
+      "required": ["autoApprovalEnabled", "autoApprovalDelayMinutes"]
+    },
+    "AppData": {
+      "title": "AppData",
+      "description": "Entire database state backed up by server",
+      "type": "object",
+      "properties": {
+        "users": { "type": "array" },
+        "transactions": { "type": "array" },
+        "logs": { "type": "array" },
+        "settings": { "type": "object" }
+      },
+      "required": ["users", "transactions", "logs", "settings"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user accounts"
+    },
+    "transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Collection of deposit, recall, earning, and purchase transactions"
+    },
+    "logs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "Collection of transaction request and status changes logs"
+    },
+    "settings/{settingsId}": {
+      "schema": "Settings",
+      "description": "Configuration settings documents"
+    },
+    "appData/{docId}": {
+      "schema": "AppData",
+      "description": "Entire application state backup documents"
+    }
+  }
+}

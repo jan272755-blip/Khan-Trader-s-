@@ -3,6 +3,8 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { User, Transaction, ActivityLog } from "./src/types";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
 // DB Models in memory and persisted in database.json
 interface ServerDB {
@@ -38,12 +40,58 @@ const initialDB: ServerDB = {
   }
 };
 
+// Read Firebase config and initialize
+let firebaseConfig: any = {};
+let firebaseApp: any = null;
+let firestoreDb: any = null;
+
+try {
+  const rawConfig = fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8");
+  firebaseConfig = JSON.parse(rawConfig);
+  firebaseApp = initializeApp(firebaseConfig);
+  firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+  console.log("Firebase initialized successfully on server.");
+} catch (e) {
+  console.error("Failed to initialize Firebase on server:", e);
+}
+
 // Global DB variable
 let db: ServerDB = { ...initialDB };
 
 // Helper to loads DB from file
-const loadDB = () => {
+const loadDB = async () => {
   try {
+    // 1. Try to load from Cloud Firestore first
+    if (firestoreDb) {
+      try {
+        console.log("Fetching database from Cloud Firestore...");
+        const docRef = doc(firestoreDb, "appData", "main");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const loaded = docSnap.data() as ServerDB;
+          const loadedUsers = loaded.users || [];
+          if (!loadedUsers.some((u: User) => u.username.toLowerCase() === "adminaccount")) {
+            loadedUsers.push(initialDB.users[0]);
+          }
+          db = {
+            users: loadedUsers,
+            transactions: loaded.transactions || [],
+            logs: loaded.logs || [],
+            settings: loaded.settings || { autoApprovalEnabled: true, autoApprovalDelayMinutes: 30 }
+          };
+          console.log("Database successfully loaded from Cloud Firestore!");
+          // Sync to local database.json file as cache
+          fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+          return;
+        } else {
+          console.log("No data found in Cloud Firestore. Seeding default database...");
+        }
+      } catch (firestoreError) {
+        console.error("Error loading from Cloud Firestore:", firestoreError);
+      }
+    }
+
+    // 2. Fallback to local database.json
     if (fs.existsSync(DB_PATH)) {
       const rawData = fs.readFileSync(DB_PATH, "utf-8");
       const loaded = JSON.parse(rawData);
@@ -60,21 +108,32 @@ const loadDB = () => {
         logs: loaded.logs || [],
         settings: loaded.settings || { autoApprovalEnabled: true, autoApprovalDelayMinutes: 30 }
       };
+      console.log("Database loaded from local database.json");
     } else {
+      console.log("No database.json found. Creating initial data...");
       saveDB();
     }
   } catch (err) {
-    console.error("Error loading server database.json:", err);
+    console.error("Error loading server database:", err);
     saveDB();
   }
 };
 
-// Helper to save DB to file
+// Helper to save DB to file and Cloud Firestore (fire-and-forget background style)
 const saveDB = () => {
   try {
+    // Write locally first for high availability and low latency
     fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+    
+    // Backup to Cloud Firestore in background
+    if (firestoreDb) {
+      const docRef = doc(firestoreDb, "appData", "main");
+      setDoc(docRef, db).catch(err => {
+        console.error("Failed to save database backup to Cloud Firestore:", err);
+      });
+    }
   } catch (err) {
-    console.error("Error saving server database.json:", err);
+    console.error("Error saving server database:", err);
   }
 };
 
@@ -146,12 +205,13 @@ const runAutoApproval = () => {
 // Start background interval for auto-approval every 15 seconds
 setInterval(runAutoApproval, 15000);
 
-// Load database immediately
-loadDB();
-// Run auto-approval scan immediately on start
-runAutoApproval();
+// Load database and run auto-approval scan will be done asynchronously when startServer() boots up
 
 async function startServer() {
+  // Load database from cloud firestore asynchronously on boot before listening
+  await loadDB();
+  runAutoApproval();
+
   const app = express();
   const PORT = 3000;
 
