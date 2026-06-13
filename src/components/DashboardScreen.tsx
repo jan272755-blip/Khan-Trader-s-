@@ -429,6 +429,34 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
   const [logStartDate, setLogStartDate] = useState('');
   const [logEndDate, setLogEndDate] = useState('');
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [autoApprovalSettings, setAutoApprovalSettings] = useState({ autoApprovalEnabled: true, autoApprovalDelayMinutes: 30 });
+
+  useEffect(() => {
+    if (user?.isAdmin) {
+      storage.getAutoApprovalSettings().then(settings => {
+        if (settings) {
+          setAutoApprovalSettings({
+            autoApprovalEnabled: settings.autoApprovalEnabled !== false,
+            autoApprovalDelayMinutes: settings.autoApprovalDelayMinutes || 30
+          });
+        }
+      });
+    }
+  }, [user?.isAdmin]);
+
+  const handleToggleAutoApproval = async (enabled: boolean) => {
+    const nextSettings = { ...autoApprovalSettings, autoApprovalEnabled: enabled };
+    setAutoApprovalSettings(nextSettings);
+    await storage.updateAutoApprovalSettings(enabled, autoApprovalSettings.autoApprovalDelayMinutes);
+    showNotification(`Auto-Approval system ${enabled ? "Enabled" : "Disabled"}!`, 'success');
+  };
+
+  const handleChangeAutoApprovalDelay = async (minutes: number) => {
+    const nextSettings = { ...autoApprovalSettings, autoApprovalDelayMinutes: minutes };
+    setAutoApprovalSettings(nextSettings);
+    await storage.updateAutoApprovalSettings(autoApprovalSettings.autoApprovalEnabled, minutes);
+    showNotification(`Auto-Approval wait time set to ${minutes} minutes!`, 'success');
+  };
 
   useEffect(() => {
     if (selectedLogUser) {
@@ -858,6 +886,70 @@ export default function DashboardScreen({ user, onLogout, showNotification, refr
             <span className="text-[10px] text-slate-405 font-medium mt-1 text-slate-400 font-sans">Offline</span>
             <span className="text-base font-bold mt-0.5 text-slate-400">{stats.offline}</span>
           </div>
+        </div>
+
+        {/* Auto Approval Engine Controls */}
+        <div className="bg-gradient-to-r from-yellow-500/10 to-amber-500/5 border border-yellow-500/20 rounded-3xl p-4 mb-6 font-sans">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⚡</span>
+              <div>
+                <h3 className="text-xs font-bold text-white tracking-wide">Auto-Approval System</h3>
+                <p className="text-[10px] text-slate-400 font-medium">خودکار ادائیگی اور ڈیپازٹ منظوری</p>
+              </div>
+            </div>
+            
+            {/* Toggle Switch */}
+            <button
+              onClick={() => handleToggleAutoApproval(!autoApprovalSettings.autoApprovalEnabled)}
+              className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                autoApprovalSettings.autoApprovalEnabled ? 'bg-yellow-500 justify-end' : 'bg-white/10 justify-start'
+              }`}
+            >
+              <div
+                className="w-4 h-4 rounded-full bg-black shadow-md transition-all duration-200"
+              />
+            </button>
+          </div>
+
+          {autoApprovalSettings.autoApprovalEnabled && (
+            <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Wait Duration before Auto-Approve:</span>
+                <span className="text-yellow-400 font-bold font-mono">
+                  {autoApprovalSettings.autoApprovalDelayMinutes} Mins ({autoApprovalSettings.autoApprovalDelayMinutes === 30 ? "Half hour" : "1 hour"})
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChangeAutoApprovalDelay(30)}
+                  className={`flex-1 py-1.5 px-2 text-[10px] font-bold rounded-lg transition-all border cursor-pointer ${
+                    autoApprovalSettings.autoApprovalDelayMinutes === 30
+                      ? 'bg-yellow-500 text-black border-yellow-500'
+                      : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10'
+                  }`}
+                >
+                  ⏱️ 30 Mins (Half hour)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChangeAutoApprovalDelay(60)}
+                  className={`flex-1 py-1.5 px-2 text-[10px] font-bold rounded-lg transition-all border cursor-pointer ${
+                    autoApprovalSettings.autoApprovalDelayMinutes === 60
+                      ? 'bg-yellow-500 text-black border-yellow-500'
+                      : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10'
+                  }`}
+                >
+                  ⏱️ 60 Mins (One hour)
+                </button>
+              </div>
+              <p className="text-[10px] text-yellow-500/80 leading-relaxed text-center">
+                💡 Pending deposit & withdraw requests will be approved <strong>automatically</strong> and credits added to user accounts if the Admin doesn't manually respond within this time window.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Tab Switcher */}

@@ -261,5 +261,33 @@ export const storage = {
       console.error("Failed to sync client with database server:", err);
     }
     return false;
+  },
+
+  // Get auto approval settings from backend server
+  getAutoApprovalSettings: async (): Promise<{ autoApprovalEnabled: boolean; autoApprovalDelayMinutes: number }> => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.error("Failed to fetch settings:", e);
+    }
+    return { autoApprovalEnabled: true, autoApprovalDelayMinutes: 30 };
+  },
+
+  // Save auto approval settings to backend server
+  updateAutoApprovalSettings: async (enabled: boolean, delayMinutes: number): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ autoApprovalEnabled: enabled, autoApprovalDelayMinutes: delayMinutes })
+      });
+      return res.ok;
+    } catch (e) {
+      console.error("Failed to update settings:", e);
+      return false;
+    }
   }
 };

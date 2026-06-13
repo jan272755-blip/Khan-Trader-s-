@@ -9,6 +9,10 @@ interface ServerDB {
   users: User[];
   transactions: Transaction[];
   logs: ActivityLog[];
+  settings?: {
+    autoApprovalEnabled: boolean;
+    autoApprovalDelayMinutes: number;
+  };
 }
 
 const DB_PATH = path.join(process.cwd(), "database.json");
@@ -27,7 +31,11 @@ const initialDB: ServerDB = {
     }
   ],
   transactions: [],
-  logs: []
+  logs: [],
+  settings: {
+    autoApprovalEnabled: true,
+    autoApprovalDelayMinutes: 30
+  }
 };
 
 // Global DB variable
@@ -49,7 +57,8 @@ const loadDB = () => {
       db = {
         users: loadedUsers,
         transactions: loaded.transactions || [],
-        logs: loaded.logs || []
+        logs: loaded.logs || [],
+        settings: loaded.settings || { autoApprovalEnabled: true, autoApprovalDelayMinutes: 30 }
       };
     } else {
       saveDB();
@@ -69,8 +78,78 @@ const saveDB = () => {
   }
 };
 
+// Auto approval engine that checks and approves deposit and withdrawal requests
+const runAutoApproval = () => {
+  try {
+    const settings = db.settings || { autoApprovalEnabled: true, autoApprovalDelayMinutes: 30 };
+    if (!settings.autoApprovalEnabled) {
+      return;
+    }
+
+    let mutated = false;
+    const now = new Date();
+    const delayMs = settings.autoApprovalDelayMinutes * 60 * 1000;
+
+    db.transactions.forEach((tx) => {
+      if (tx.status === "pending") {
+        const txDate = new Date(tx.date);
+        if (isNaN(txDate.getTime())) return;
+
+        const elapsedMs = now.getTime() - txDate.getTime();
+        if (elapsedMs >= delayMs) {
+          tx.status = "success";
+          mutated = true;
+
+          if (tx.type === "deposit") {
+            const userIdx = db.users.findIndex(u => u.username.toLowerCase() === tx.username?.toLowerCase());
+            if (userIdx !== -1) {
+              db.users[userIdx].balance += tx.amount;
+            }
+
+            // Create system log
+            const logId = `log_auto_approve_${tx.id}`;
+            if (!db.logs.some(l => l.id === logId)) {
+              db.logs.unshift({
+                id: logId,
+                username: tx.username || "system",
+                action: "deposit_request",
+                timestamp: now.toISOString(),
+                details: `System Auto-Approved Deposit of Rs. ${tx.amount} (TID: ${tx.tid || "N/A"}) after ${settings.autoApprovalDelayMinutes} mins idle.`
+              });
+            }
+          } else if (tx.type === "withdraw") {
+            // Withdrawal request holds funds and reduces balance on presentation, so marking 'success' is sufficient
+            // Create system log
+            const logId = `log_auto_approve_${tx.id}`;
+            if (!db.logs.some(l => l.id === logId)) {
+              db.logs.unshift({
+                id: logId,
+                username: tx.username || "system",
+                action: "withdraw_request",
+                timestamp: now.toISOString(),
+                details: `System Auto-Approved Withdrawal of Rs. ${Math.abs(tx.amount)} after ${settings.autoApprovalDelayMinutes} mins idle.`
+              });
+            }
+          }
+        }
+      }
+    });
+
+    if (mutated) {
+      saveDB();
+    }
+  } catch (err) {
+    console.error("Error running auto-approval sweep:", err);
+  }
+};
+
+// Start background interval for auto-approval every 15 seconds
+setInterval(runAutoApproval, 15000);
+
 // Load database immediately
 loadDB();
+// Run auto-approval scan immediately on start
+runAutoApproval();
 
 async function startServer() {
   const app = express();
@@ -81,6 +160,7 @@ async function startServer() {
 
   // API Route - Get all data (Users, Transactions, Logs)
   app.get("/api/data", (req, res) => {
+    runAutoApproval();
     res.json(db);
   });
 
@@ -172,7 +252,40 @@ async function startServer() {
       saveDB();
     }
 
+    runAutoApproval();
     res.json(db);
+  });
+
+  // API Route - Get Auto-Approval Settings
+  app.get("/api/settings", (req, res) => {
+    res.json(db.settings || { autoApprovalEnabled: true, autoApprovalDelayMinutes: 30 });
+  });
+
+  // API Route - Update Auto-Approval Settings
+  app.post("/api/settings", (req, res) => {
+    const { autoApprovalEnabled, autoApprovalDelayMinutes } = req.body;
+    db.settings = {
+      autoApprovalEnabled: typeof autoApprovalEnabled === "boolean" ? autoApprovalEnabled : true,
+      autoApprovalDelayMinutes: typeof autoApprovalDelayMinutes === "number" ? autoApprovalDelayMinutes : 30
+    };
+    saveDB();
+    
+    // Immediately run auto approvals if enabled
+    if (db.settings.autoApprovalEnabled) {
+      runAutoApproval();
+    }
+    
+    // Add system log for setting change
+    db.logs.unshift({
+      id: "log_settings_change_" + Date.now(),
+      username: "adminaccount",
+      action: "deposit_request",
+      timestamp: new Date().toISOString(),
+      details: `Admin changed auto-approval configuration: Enabled=${db.settings.autoApprovalEnabled}, Timeout=${db.settings.autoApprovalDelayMinutes} mins.`
+    });
+    saveDB();
+
+    res.json({ success: true, settings: db.settings });
   });
 
   // API Route - Registration
